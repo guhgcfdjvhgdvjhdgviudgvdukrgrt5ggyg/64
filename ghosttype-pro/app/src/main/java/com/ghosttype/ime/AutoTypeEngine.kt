@@ -220,9 +220,16 @@ object AutoTypeEngine {
             return false
         }
         val clickCount = if (multiClick) 3 else 1
+        /** Dispatch a tap at [x],[y] using whichever gesture service is connected. */
+        fun gestureClickAt(x: Float, y: Float): Boolean =
+            acc?.clickAt(x, y)
+                ?: GhostTypePointerService.instance?.clickAt(x, y)
+                ?: false
+
         suspend fun pointerClick(): Boolean {
             if (px < 0 || py < 0) return false
-            val a = acc ?: return false
+            // Require at least one gesture service to be running.
+            if (acc == null && GhostTypePointerService.instance == null) return false
             // ROOT CAUSE OF "POINTER CLICK NOT WORKING":
             //   The floating dot sits at exactly (px, py) — the same spot we
             //   want to tap. On Android 9+, accessibility gestures can still
@@ -247,7 +254,7 @@ object AutoTypeEngine {
             delay(650)
             var ok = false
             repeat(clickCount) {
-                ok = a.clickAt(px.toFloat(), py.toFloat())
+                ok = gestureClickAt(px.toFloat(), py.toFloat())
                 // Wait longer than the stroke duration (120 ms) so the
                 // gesture fully completes before we fire the next click.
                 if (ok) delay(200)

@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">GhostType Pro</string>
-    <string name="accessibility_service_description">GhostType Pro Auto-Type ko text fields mein automatically messages inject karne ke liye Accessibility access chahiye. Yeh sirf user ke kehne par chalta hai aur internet par koi data nahi bhejta.</string>
+    <string name="accessibility_service_description">GhostType Pro — Auto-Type ko text fields mein automatically messages inject karne aur Send button click karne ke liye Accessibility access chahiye. Yeh sirf user ke kehne par chalta hai aur internet par koi data nahi bhejta.</string>
+    <string name="accessibility_pointer_description">GhostType Pointer — floating pointer ki saved position par automatic tap karne ke liye gesture permission chahiye. Sirf Auto-Type ke dauran Send click karta hai, koi data read ya send nahi karta.</string>
     <string name="ime_label">GhostType Pro Keyboard</string>
     <string name="auto_type_channel">GhostType Auto-Type</string>
 </resources>

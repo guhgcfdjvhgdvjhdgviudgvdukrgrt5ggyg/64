@@ -58,11 +58,11 @@ class GhostTypeIMEService : InputMethodService() {
                 com.ghosttype.utils.FontManager.invalidateCache()
                 scope.launch { keyboardView?.reload() }
             }
-            SettingsStore.KEY_FONT_STYLE -> {
-                // Unicode output style changed — keyboard preview labels stay
-                // the same but the next typed character will be transformed.
-                // Reload the toolbar so the "Aa" pill can show the new style
-                // name if needed.
+            SettingsStore.KEY_FONT_STYLE,
+            SettingsStore.KEY_MATH_ENABLED,
+            SettingsStore.KEY_FYT_ENABLED -> {
+                // Unicode output style / Math / FYT toggled —
+                // reload toolbar so tile labels update (Math ✓ / FYT ✓).
                 scope.launch { keyboardView?.reload() }
             }
             SettingsStore.KEY_BG_IMAGE_URI, SettingsStore.KEY_BG_IMAGE_OPACITY, SettingsStore.KEY_BG_SHOW_BORDERS,
@@ -89,11 +89,34 @@ class GhostTypeIMEService : InputMethodService() {
     /**
      * Apply the user's currently-selected Unicode style to [text] before
      * committing it to the focused field. Empty / null styles are a pass-through.
+     * When Math Mode is ON it takes exclusive control — all other font styles
+     * are bypassed so only 1337-style letter→number conversion is applied.
      */
     private fun stylize(text: String): String {
         if (text.isEmpty()) return text
-        val t = UnicodeFonts.transform(this, text)
-        return if (SettingsStore.prefs(this).getBoolean(SettingsStore.KEY_CAPS_MODE, false)) t.uppercase() else t
+        val p = SettingsStore.prefs(this)
+        val t = when {
+            p.getBoolean(SettingsStore.KEY_MATH_ENABLED, false) -> {
+                // Math Mode: letters → 1337 numbers, all other styles bypassed
+                UnicodeFonts.toMath(text)
+            }
+            p.getBoolean(SettingsStore.KEY_FYT_ENABLED, false) -> {
+                // FYT Mode: each character repeated N times (e.g. "hi" + 3 → "hhhiii")
+                // Other font styles bypassed when FYT is active.
+                val count = p.getInt(SettingsStore.KEY_FYT_COUNT, 3).coerceIn(2, 9)
+                val sb = StringBuilder()
+                var i = 0
+                while (i < text.length) {
+                    val cp = text.codePointAt(i)
+                    val ch = String(Character.toChars(cp))
+                    if (cp > 32) repeat(count) { sb.append(ch) } else sb.append(ch)
+                    i += Character.charCount(cp)
+                }
+                sb.toString()
+            }
+            else -> UnicodeFonts.transform(this, text)
+        }
+        return if (p.getBoolean(SettingsStore.KEY_CAPS_MODE, false)) t.uppercase() else t
     }
 
     /**

@@ -48,7 +48,7 @@ object KeyboardLayouts {
             row("q","w","e","r","t","y","u","i","o","p", longs = mapOf("e" to "èéêë","u" to "ùúûü","i" to "ìíîï","o" to "òóôõö")),
             row("a","s","d","f","g","h","j","k","l", longs = mapOf("a" to "àáâãäå")),
             listOf(KeyDef("⇧", "shift", widthWeight = 1.5f, type = KeyType.SHIFT))
-                + row("z","x","c","v","b","n","m")
+                + row("z","x","c","v","b","n","m", longs = mapOf("n" to "→"))
                 + listOf(KeyDef("⌫", "back", widthWeight = 1.5f, type = KeyType.BACKSPACE)),
             bottomRow()
         )
@@ -104,9 +104,6 @@ object KeyboardLayouts {
         else -> ENGLISH_QWERTY
     }
 
-    val LANGUAGE_CYCLE = listOf("en", "ur", "ar")
-    fun nextLanguage(current: String): String {
-        val idx = LANGUAGE_CYCLE.indexOf(current).let { if (it < 0) 0 else it }
-        return LANGUAGE_CYCLE[(idx + 1) % LANGUAGE_CYCLE.size]
-    }
+    val LANGUAGE_CYCLE = listOf("en")
+    fun nextLanguage(current: String): String = "en"
 }

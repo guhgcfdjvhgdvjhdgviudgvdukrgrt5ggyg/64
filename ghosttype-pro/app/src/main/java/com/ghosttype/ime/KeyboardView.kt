@@ -407,9 +407,26 @@ class KeyboardView(
         reload()
     }
 
+    private fun toggleMathMode() {
+        val on = !prefs.getBoolean(SettingsStore.KEY_MATH_ENABLED, false)
+        prefs.edit().putBoolean(SettingsStore.KEY_MATH_ENABLED, on).apply()
+        Toast.makeText(context, if (on) "Math Mode ON 🔢" else "Math Mode OFF", Toast.LENGTH_SHORT).show()
+        reload()
+    }
+
+    private fun toggleFytMode() {
+        val on = !prefs.getBoolean(SettingsStore.KEY_FYT_ENABLED, false)
+        prefs.edit().putBoolean(SettingsStore.KEY_FYT_ENABLED, on).apply()
+        Toast.makeText(context, if (on) "FYT Mode ON 🔁" else "FYT Mode OFF", Toast.LENGTH_SHORT).show()
+        reload()
+    }
+
     private fun allToolActions(): List<ToolAction> = listOf(
-        ToolAction("🔢", "Math",      iconRes = R.drawable.ic_tool_math,        tintIcon = true) { onOpenSection("math") },
-        ToolAction("🔁", "FYT Type",  iconRes = R.drawable.ic_tool_fyt,         tintIcon = true) { onOpenSection("fyttype") },
+        ToolAction("🎨", "Themes",    iconRes = null,                           tintIcon = false) { v -> showThemePicker(v) },
+        ToolAction("🔢", if (prefs.getBoolean(SettingsStore.KEY_MATH_ENABLED, false)) "Math ✓" else "Math",
+            iconRes = R.drawable.ic_tool_math, tintIcon = true) { toggleMathMode() },
+        ToolAction("🔁", if (prefs.getBoolean(SettingsStore.KEY_FYT_ENABLED, false)) "FYT ✓" else "FYT Type",
+            iconRes = R.drawable.ic_tool_fyt, tintIcon = true) { toggleFytMode() },
         ToolAction("⬆",  "Caps",      iconRes = R.drawable.ic_tool_caps,        tintIcon = true) { toggleCapsMode() },
         ToolAction("Aa", "Font",      iconRes = R.drawable.ic_tool_font,      tintIcon = true) { v -> showFontPicker(v) },
         ToolAction("📋", "Clipboard", iconRes = R.drawable.ic_tool_clipboard,  tintIcon = true) { showClipboardPanel() },
@@ -1010,12 +1027,14 @@ class KeyboardView(
 
                 val tv = TextView(context).apply {
                     val isKawaii = theme.id == "kawaii_bubble"
+                    val isEmojiBlue = theme.id == "emoji_blue"
+                    val isCuteTheme = isKawaii || isEmojiBlue
                     val display = when {
-                        // kawaii bubble — special keys show cute emoji icons
-                        isKawaii && key.type == KeyType.SHIFT ->
-                            if (capsMode) "🩷★" else "🩷"
-                        isKawaii && key.type == KeyType.BACKSPACE -> "⭐"
-                        isKawaii && key.type == KeyType.ENTER -> "🌈"
+                        // kawaii bubble / emoji blue — special keys show cute emoji icons
+                        isCuteTheme && key.type == KeyType.SHIFT ->
+                            if (capsMode) "❤️⬆" else "❤️"
+                        isCuteTheme && key.type == KeyType.BACKSPACE -> "⭐✕"
+                        isCuteTheme && key.type == KeyType.ENTER -> "🌈↩"
                         // standard labels below
                         // v1.10 — space-bar branding label is XOR-encrypted
                         // (ObfConstants.SPACE_LABEL bound to the keystore SHA).
@@ -1032,11 +1051,11 @@ class KeyboardView(
                     }
                     text = display
                     setTextColor(
-                        // kawaii bubble: shift/backspace/enter get coloured emoji so
+                        // cute themes: shift/backspace/enter get coloured emoji so
                         // they stay readable — emoji are full-colour but if we keep
                         // theme.keyText on a pure-emoji label Android still renders the
                         // glyph correctly; we only override text colour for clarity.
-                        if (theme.id == "kawaii_bubble" && key.type in listOf(
+                        if (isCuteTheme && key.type in listOf(
                                 KeyType.SHIFT, KeyType.BACKSPACE, KeyType.ENTER)) {
                             android.graphics.Color.parseColor("#28436A")
                         } else theme.keyText
@@ -1044,7 +1063,7 @@ class KeyboardView(
                     gravity = Gravity.CENTER
                     setTypeface(typeface)
                     textSize = when {
-                        theme.id == "kawaii_bubble" && key.type in listOf(
+                        isCuteTheme && key.type in listOf(
                             KeyType.SHIFT, KeyType.BACKSPACE, KeyType.ENTER) -> keyTextSize + 4f
                         else -> keyTextSize
                     }
@@ -1813,6 +1832,97 @@ class KeyboardView(
     }
 
     // ===== ON-KEYBOARD FONT PICKER (popup) =====
+    private fun showThemePicker(anchor: View) {
+        val container = ScrollView(context).apply {
+            setBackgroundColor(theme.keyboardBg)
+            setPadding(dp(8), dp(8), dp(8), dp(8))
+        }
+        val list = LinearLayout(context).apply { orientation = VERTICAL }
+
+        val popupRef = arrayOfNulls<PopupWindow>(1)
+        val activeId = prefs.getString(SettingsStore.KEY_THEME, "cute_pill_blue") ?: "cute_pill_blue"
+
+        ThemeManager.BUILT_IN.forEach { t ->
+            val isActive = t.id == activeId
+            val row = LinearLayout(context).apply {
+                orientation = HORIZONTAL
+                layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, dp(52))
+                background = makeKeyBackground(
+                    if (isActive) theme.accent else theme.keyBg, "rounded", 1f
+                )
+                setPadding(dp(10), 0, dp(10), 0)
+                val lp = layoutParams as LayoutParams
+                lp.setMargins(0, dp(3), 0, dp(3))
+                layoutParams = lp
+                gravity = Gravity.CENTER_VERTICAL
+                setOnClickListener {
+                    ThemeManager.setTheme(context, t.id)
+                    reload()
+                    Toast.makeText(context, "Theme: ${t.name}", Toast.LENGTH_SHORT).show()
+                    popupRef[0]?.dismiss()
+                }
+            }
+            // Swatch: keyboardBg circle
+            val bgSwatch = View(context).apply {
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(t.keyboardBg)
+                    setStroke(dp(1), Color.parseColor("#40000000"))
+                }
+            }
+            row.addView(bgSwatch, LayoutParams(dp(22), dp(22)).also {
+                it.marginEnd = dp(4)
+                it.gravity = Gravity.CENTER_VERTICAL
+            })
+            // Swatch: keyBg circle
+            val keySwatch = View(context).apply {
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(t.keyBg)
+                    setStroke(dp(1), Color.parseColor("#40000000"))
+                }
+            }
+            row.addView(keySwatch, LayoutParams(dp(18), dp(18)).also {
+                it.marginEnd = dp(10)
+                it.gravity = Gravity.CENTER_VERTICAL
+            })
+            // Theme name
+            val nameTv = TextView(context).apply {
+                text = t.name
+                setTextColor(if (isActive) Color.WHITE else theme.keyText)
+                textSize = 14f
+                gravity = Gravity.CENTER_VERTICAL
+            }
+            row.addView(nameTv, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
+            if (isActive) {
+                val checkTv = TextView(context).apply {
+                    text = "✓"
+                    setTextColor(Color.WHITE)
+                    textSize = 16f
+                    gravity = Gravity.CENTER_VERTICAL
+                    setTypeface(null, Typeface.BOLD)
+                }
+                row.addView(checkTv, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT))
+            }
+            list.addView(row)
+        }
+
+        container.addView(list)
+        val popupWidth = (resources.displayMetrics.widthPixels * 0.88f).toInt()
+        val popupHeight = (resources.displayMetrics.heightPixels * 0.50f).toInt()
+        val popup = PopupWindow(container, popupWidth, popupHeight, true).apply {
+            elevation = dp(8).toFloat()
+            isOutsideTouchable = true
+            setBackgroundDrawable(GradientDrawable().apply {
+                setColor(theme.keyboardBg)
+                cornerRadius = dp(12).toFloat()
+                setStroke(dp(1), theme.accent)
+            })
+        }
+        popupRef[0] = popup
+        try { popup.showAtLocation(this, Gravity.CENTER, 0, -dp(40)) } catch (_: Throwable) { }
+    }
+
     private fun showFontPicker(anchor: View) {
         val all: List<FontEntry> = FontManager.all(context)
         val activePath = FontManager.activePath(context)

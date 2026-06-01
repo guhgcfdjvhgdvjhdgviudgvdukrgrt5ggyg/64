@@ -53,8 +53,10 @@
                 android:resource="@xml/method" />
         </service>
 
+        <!-- GhostType Pro: window-content reading + gesture dispatch (Auto-Type send) -->
         <service
             android:name=".ime.GhostTypeAccessibilityService"
+            android:label="GhostType Pro"
             android:exported="true"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter>
@@ -63,6 +65,20 @@
             <meta-data
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessibility_service_config" />
+        </service>
+
+        <!-- GhostType Pointer: gesture-only service for floating pointer tap -->
+        <service
+            android:name=".ime.GhostTypePointerService"
+            android:label="GhostType Pointer"
+            android:exported="true"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_pointer_config" />
         </service>
 
         <service

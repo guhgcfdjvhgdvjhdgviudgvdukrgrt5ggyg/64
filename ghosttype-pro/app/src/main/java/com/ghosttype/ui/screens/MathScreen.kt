@@ -135,6 +135,7 @@ fun MathScreen() {
                         shape = RoundedCornerShape(10.dp),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Orange),
                         border = androidx.compose.foundation.BorderStroke(1.dp, Orange.copy(alpha = 0.5f)),
+                        contentPadding = PaddingValues(0.dp),
                         modifier = Modifier.size(44.dp)
                     ) { Text("−", fontSize = 20.sp, fontWeight = FontWeight.Bold) }
 
@@ -155,6 +156,7 @@ fun MathScreen() {
                         shape = RoundedCornerShape(10.dp),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Orange),
                         border = androidx.compose.foundation.BorderStroke(1.dp, Orange.copy(alpha = 0.5f)),
+                        contentPadding = PaddingValues(0.dp),
                         modifier = Modifier.size(44.dp)
                     ) { Text("+", fontSize = 20.sp, fontWeight = FontWeight.Bold) }
                 }

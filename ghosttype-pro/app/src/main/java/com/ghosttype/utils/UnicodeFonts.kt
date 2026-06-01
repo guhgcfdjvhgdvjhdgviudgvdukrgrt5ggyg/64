@@ -55,7 +55,7 @@ object UnicodeFonts {
             Style("squared",       "Squared",                 apply("AB", ::toSquared))               { toSquared(it) },
             Style("squared_neg",   "Negative Squared",        apply("AB", ::toSquaredNeg))            { toSquaredNeg(it) },
             Style("fullwidth",     "Fullwidth",               apply("Aa Bb 12", ::toFullwidth))       { toFullwidth(it) },
-            Style("math",          "Math",                    apply("Ee Tt 12", ::toMath))            { toMath(it) },
+
             Style("small_caps",    "Small Caps",              apply("Aa Bb 12", ::toSmallCaps))       { toSmallCaps(it) },
             Style("upside_down",   "Upside Down",             apply("Aa Bb 12", ::toUpsideDown))      { toUpsideDown(it) },
             Style("strike",        "Strikethrough",           combineDemo("Aa Bb 12", '\u0336'))      { combine(it, '\u0336') },

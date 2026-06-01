@@ -45,6 +45,16 @@ object ThemeManager {
             suggestionBg = Color.parseColor("#C2DDED"),
             pressedKey   = Color.parseColor("#A0C8E4"),
             accent       = Color.parseColor("#5FA8D3")
+        ),
+        KeyboardTheme(
+            id = "emoji_blue",
+            name = "🌈 Emoji Blue",
+            keyboardBg   = Color.parseColor("#C8E6F7"),
+            keyBg        = Color.parseColor("#EEF7FD"),
+            keyText      = Color.parseColor("#2A4A6A"),
+            suggestionBg = Color.parseColor("#C8E6F7"),
+            pressedKey   = Color.parseColor("#B0D8F0"),
+            accent       = Color.parseColor("#5A9AC5")
         )
     )
 
