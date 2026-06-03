@@ -1,5 +1,8 @@
 package com.ghosttype.ui.screens
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
@@ -279,6 +282,15 @@ fun LockScreen(state: ApprovalGate.State, onRecheck: suspend () -> Unit, planExp
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f)
                         )
+                        IconButton(
+                            onClick = {
+                                val clip = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                clip.setPrimaryClip(ClipData.newPlainText("GhostType Device ID", id))
+                            },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Text("📋", fontSize = 12.sp)
+                        }
                     }
                 }
 
@@ -304,17 +316,31 @@ fun LockScreen(state: ApprovalGate.State, onRecheck: suspend () -> Unit, planExp
         ) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Device ID", color = TextMuted, fontSize = 12.sp, letterSpacing = 0.8.sp)
-                Text(
-                    id,
-                    color = Color.White,
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 15.sp,
-                    textAlign = TextAlign.Center,
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(Color(0xFF1E1E1E), RoundedCornerShape(8.dp))
-                        .padding(12.dp)
-                )
+                        .padding(start = 12.dp, end = 4.dp)
+                ) {
+                    Text(
+                        id,
+                        color = Color.White,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 15.sp,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(
+                        onClick = {
+                            val clip = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            clip.setPrimaryClip(ClipData.newPlainText("GhostType Device ID", id))
+                        },
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Text("📋", fontSize = 18.sp)
+                    }
+                }
             }
         }
 
