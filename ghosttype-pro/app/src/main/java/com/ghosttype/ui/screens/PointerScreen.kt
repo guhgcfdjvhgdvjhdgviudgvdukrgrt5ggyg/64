@@ -45,7 +45,7 @@ fun PointerScreen() {
     var dotLocked         by remember { mutableStateOf(prefs.getBoolean(SettingsStore.KEY_POINTER_LOCKED, false)) }
     var pointerSizeDp     by remember { mutableStateOf(prefs.getInt(SettingsStore.KEY_POINTER_SIZE_DP, 28).coerceIn(16, 72)) }
     var hasOverlayPerm    by remember { mutableStateOf(Settings.canDrawOverlays(ctx)) }
-    var clickDelayMs      by remember { mutableStateOf(prefs.getInt(SettingsStore.KEY_POINTER_CLICK_DELAY_MS, 0).coerceIn(0, 5000)) }
+    var clickDelayMs      by remember { mutableStateOf(prefs.getInt(SettingsStore.KEY_POINTER_CLICK_DELAY_MS, 3000).coerceIn(3000, 400000)) }
 
     // Refresh position + dot status every 600 ms so UI always stays in sync
     LaunchedEffect(Unit) {
@@ -375,7 +375,7 @@ fun PointerScreen() {
                 ) {
                     OutlinedButton(
                         onClick = {
-                            clickDelayMs = (clickDelayMs - 500).coerceAtLeast(0)
+                            clickDelayMs = (clickDelayMs - 1000).coerceAtLeast(3000)
                             prefs.edit().putInt(SettingsStore.KEY_POINTER_CLICK_DELAY_MS, clickDelayMs).apply()
                         },
                         shape = RoundedCornerShape(10.dp),
@@ -391,7 +391,7 @@ fun PointerScreen() {
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            if (clickDelayMs == 0) "Off" else "${clickDelayMs / 1000}.${(clickDelayMs % 1000) / 100}s",
+                            "${clickDelayMs / 1000}.${(clickDelayMs % 1000) / 100}s",
                             color = OrangeP,
                             fontWeight = FontWeight.ExtraBold,
                             fontSize = 22.sp,
@@ -400,7 +400,7 @@ fun PointerScreen() {
                     }
                     OutlinedButton(
                         onClick = {
-                            clickDelayMs = (clickDelayMs + 500).coerceAtMost(5000)
+                            clickDelayMs = (clickDelayMs + 1000).coerceAtMost(400000)
                             prefs.edit().putInt(SettingsStore.KEY_POINTER_CLICK_DELAY_MS, clickDelayMs).apply()
                         },
                         shape = RoundedCornerShape(10.dp),
