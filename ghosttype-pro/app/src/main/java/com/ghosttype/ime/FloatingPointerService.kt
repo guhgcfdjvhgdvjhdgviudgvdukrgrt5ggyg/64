@@ -94,6 +94,7 @@ class FloatingPointerService : Service() {
     // ─── Auto-click loop ─────────────────────────────────────────────────────
 
     private fun startAutoClick() {
+        autoClickRunning = true
         autoClickJob?.cancel()
         autoClickJob = scope.launch(Dispatchers.IO) {
             while (isActive) {
@@ -129,6 +130,7 @@ class FloatingPointerService : Service() {
     }
 
     private fun stopAutoClick() {
+        autoClickRunning = false
         autoClickJob?.cancel()
         autoClickJob = null
     }
@@ -327,6 +329,7 @@ class FloatingPointerService : Service() {
         const val ACTION_AUTO_CLICK_STOP  = "com.ghosttype.pointer.AUTO_CLICK_STOP"
 
         @Volatile var instance: FloatingPointerService? = null
+        @Volatile var autoClickRunning: Boolean = false
 
         fun start(ctx: Context) {
             ctx.startService(Intent(ctx, FloatingPointerService::class.java).setAction(ACTION_START))

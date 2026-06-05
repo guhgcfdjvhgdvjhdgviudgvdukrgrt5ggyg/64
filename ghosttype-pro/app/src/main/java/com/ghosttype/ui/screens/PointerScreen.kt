@@ -42,6 +42,7 @@ fun PointerScreen() {
     var pointerX          by remember { mutableStateOf(prefs.getInt(SettingsStore.KEY_POINTER_X, -1)) }
     var pointerY          by remember { mutableStateOf(prefs.getInt(SettingsStore.KEY_POINTER_Y, -1)) }
     var dotRunning        by remember { mutableStateOf(FloatingPointerService.instance != null) }
+    var clickRunning      by remember { mutableStateOf(FloatingPointerService.autoClickRunning) }
     var dotLocked         by remember { mutableStateOf(prefs.getBoolean(SettingsStore.KEY_POINTER_LOCKED, false)) }
     var pointerSizeDp     by remember { mutableStateOf(prefs.getInt(SettingsStore.KEY_POINTER_SIZE_DP, 28).coerceIn(16, 72)) }
     var hasOverlayPerm    by remember { mutableStateOf(Settings.canDrawOverlays(ctx)) }
@@ -54,6 +55,7 @@ fun PointerScreen() {
             pointerX       = prefs.getInt(SettingsStore.KEY_POINTER_X, -1)
             pointerY       = prefs.getInt(SettingsStore.KEY_POINTER_Y, -1)
             dotRunning     = FloatingPointerService.instance != null
+            clickRunning   = FloatingPointerService.autoClickRunning
             dotLocked      = prefs.getBoolean(SettingsStore.KEY_POINTER_LOCKED, false)
             hasOverlayPerm = Settings.canDrawOverlays(ctx)
         }
@@ -95,15 +97,21 @@ fun PointerScreen() {
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(10.dp))
                 .background(
-                    if (pointerEnabled && positionSet) GreenOk.copy(alpha = 0.10f)
-                    else if (pointerEnabled) OrangeP.copy(alpha = 0.10f)
-                    else MaterialTheme.colorScheme.surfaceVariant
+                    when {
+                        clickRunning -> GreenOk.copy(alpha = 0.15f)
+                        pointerEnabled && positionSet -> GreenOk.copy(alpha = 0.10f)
+                        pointerEnabled -> OrangeP.copy(alpha = 0.10f)
+                        else -> MaterialTheme.colorScheme.surfaceVariant
+                    }
                 )
                 .border(
                     1.dp,
-                    if (pointerEnabled && positionSet) GreenOk.copy(alpha = 0.35f)
-                    else if (pointerEnabled) OrangeP.copy(alpha = 0.35f)
-                    else MaterialTheme.colorScheme.outlineVariant,
+                    when {
+                        clickRunning -> GreenOk.copy(alpha = 0.50f)
+                        pointerEnabled && positionSet -> GreenOk.copy(alpha = 0.35f)
+                        pointerEnabled -> OrangeP.copy(alpha = 0.35f)
+                        else -> MaterialTheme.colorScheme.outlineVariant
+                    },
                     RoundedCornerShape(10.dp)
                 )
                 .padding(horizontal = 14.dp, vertical = 10.dp),
@@ -113,7 +121,8 @@ fun PointerScreen() {
             Box(
                 Modifier.size(9.dp).clip(CircleShape).background(
                     when {
-                        pointerEnabled && positionSet -> GreenOk
+                        clickRunning -> GreenOk
+                        pointerEnabled && positionSet -> BlueP
                         pointerEnabled -> OrangeP
                         else -> Color(0xFF888888)
                     }
@@ -121,11 +130,13 @@ fun PointerScreen() {
             )
             Text(
                 when {
+                    clickRunning -> "🔄 Auto-click running — tapping X:$pointerX  Y:$pointerY"
                     pointerEnabled && positionSet -> "✅ Dot shown at X:$pointerX  Y:$pointerY — tap Start Click to begin"
                     pointerEnabled -> "⚠ Position not set — show dot and drag it to Send button"
                     else -> "Pointer is OFF"
                 },
                 color = when {
+                    clickRunning -> GreenOk
                     pointerEnabled && positionSet -> GreenOk
                     pointerEnabled -> OrangeP
                     else -> MaterialTheme.colorScheme.onSurfaceVariant
@@ -155,22 +166,34 @@ fun PointerScreen() {
             }
             Button(
                 onClick = {
-                    pointerEnabled = true
-                    prefs.edit().putBoolean(SettingsStore.KEY_POINTER_ENABLED, true).apply()
-                    if (!dotRunning) {
-                        dotRunning = true
-                        FloatingPointerService.showDotOnly(ctx)
+                    if (clickRunning) {
+                        clickRunning = false
+                        FloatingPointerService.stopAutoClick(ctx)
+                    } else {
+                        pointerEnabled = true
+                        prefs.edit().putBoolean(SettingsStore.KEY_POINTER_ENABLED, true).apply()
+                        if (!dotRunning) {
+                            dotRunning = true
+                            FloatingPointerService.showDotOnly(ctx)
+                        }
+                        clickRunning = true
+                        FloatingPointerService.startAutoClick(ctx)
                     }
-                    FloatingPointerService.startAutoClick(ctx)
                 },
                 modifier = Modifier.weight(1f).height(52.dp),
                 shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(
+                colors = if (clickRunning) ButtonDefaults.buttonColors(
+                    containerColor = RedErr,
+                    contentColor = Color.White
+                ) else ButtonDefaults.buttonColors(
                     containerColor = Color(0xFFFF8C00),
                     contentColor = Color.Black
                 )
             ) {
-                Text("▶  Start Click", fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
+                Text(
+                    if (clickRunning) "⏹  Stop Click" else "▶  Start Click",
+                    fontWeight = FontWeight.ExtraBold, fontSize = 14.sp
+                )
             }
         }
 
