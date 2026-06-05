@@ -220,7 +220,7 @@ fun MathScreen() {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(letter, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                    Text("→", color = Color(0xFF666666), fontSize = 16.sp)
+                    Text("->", color = Color(0xFF666666), fontSize = 16.sp)
                     Text(number, color = Orange, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 }
             }

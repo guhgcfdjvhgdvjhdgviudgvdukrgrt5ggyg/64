@@ -240,7 +240,7 @@ private fun ForceUpdateScreen(
                             fontSize = 16.sp
                         )
                     }
-                    Text("→", color = Color(0xFF555555), fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Text("->", color = Color(0xFF555555), fontSize = 20.sp, fontWeight = FontWeight.Bold)
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Required", color = Color(0xFF888888), fontSize = 11.sp)
                         Text(
