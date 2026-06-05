@@ -122,7 +122,7 @@ fun PointerScreen() {
             )
             Text(
                 when {
-                    pointerEnabled && positionSet -> "✅ Ready — pointer will auto-click at X:$pointerX  Y:$pointerY"
+                    pointerEnabled && positionSet -> "✅ Dot shown at X:$pointerX  Y:$pointerY — tap Start Click to begin"
                     pointerEnabled -> "⚠ Position not set — show dot and drag it to Send button"
                     else -> "Pointer is OFF"
                 },
@@ -136,67 +136,43 @@ fun PointerScreen() {
             )
         }
 
-        // ── Enable/Disable card ─────────────────────────────────
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(Brush.horizontalGradient(listOf(BlueP.copy(alpha = 0.13f), BlueDark.copy(alpha = 0.06f))))
-                .border(
-                    1.5.dp,
-                    Brush.horizontalGradient(
-                        listOf(BlueP.copy(alpha = if (pointerEnabled) 0.65f else 0.28f),
-                               BlueDark.copy(alpha = if (pointerEnabled) 0.35f else 0.15f))
-                    ),
-                    RoundedCornerShape(16.dp)
+        // ── Pointer Show + Start Click buttons ──────────────────
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            Button(
+                onClick = {
+                    pointerEnabled = true
+                    dotRunning = true
+                    prefs.edit().putBoolean(SettingsStore.KEY_POINTER_ENABLED, true).apply()
+                    FloatingPointerService.showDotOnly(ctx)
+                },
+                modifier = Modifier.weight(1f).height(52.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = BlueP,
+                    contentColor = Color.White
                 )
-                .padding(18.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text("Enable Pointer", color = BlueP, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
-                    Text(
-                        if (pointerEnabled) "Pointer is active" else "Pointer is disabled",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp
-                    )
-                }
-                Switch(
-                    checked = pointerEnabled,
-                    onCheckedChange = {
-                        pointerEnabled = it
-                        dotRunning = it
-                        prefs.edit().putBoolean(SettingsStore.KEY_POINTER_ENABLED, it).apply()
-                        if (it) FloatingPointerService.start(ctx)
-                        else    FloatingPointerService.stop(ctx)
-                    },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = Color.White,
-                        checkedTrackColor = BlueP
-                    )
-                )
+                Text("🎯  Pointer Show", fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
             }
-        }
-
-        // ── Start Pointer button ────────────────────────────────
-        Button(
-            onClick = {
-                pointerEnabled = true
-                dotRunning = true
-                prefs.edit().putBoolean(SettingsStore.KEY_POINTER_ENABLED, true).apply()
-                FloatingPointerService.start(ctx)
-            },
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = BlueP,
-                contentColor = Color.White
-            )
-        ) {
-            Text("▶  Start Pointer", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
+            Button(
+                onClick = {
+                    pointerEnabled = true
+                    prefs.edit().putBoolean(SettingsStore.KEY_POINTER_ENABLED, true).apply()
+                    if (!dotRunning) {
+                        dotRunning = true
+                        FloatingPointerService.showDotOnly(ctx)
+                    }
+                    FloatingPointerService.startAutoClick(ctx)
+                },
+                modifier = Modifier.weight(1f).height(52.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFFF8C00),
+                    contentColor = Color.Black
+                )
+            ) {
+                Text("▶  Start Click", fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
+            }
         }
 
         // ── Dot control card ────────────────────────────────────
@@ -240,7 +216,7 @@ fun PointerScreen() {
                         pointerEnabled = true
                         dotRunning = true
                         prefs.edit().putBoolean(SettingsStore.KEY_POINTER_ENABLED, true).apply()
-                        FloatingPointerService.start(ctx)
+                        FloatingPointerService.showDotOnly(ctx)
                     },
                     enabled = !dotRunning,
                     shape = RoundedCornerShape(12.dp),

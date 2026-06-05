@@ -67,7 +67,6 @@ class FloatingPointerService : Service() {
             return
         }
         instance = this
-        startAutoClick()
     }
 
     override fun onDestroy() {
@@ -80,10 +79,12 @@ class FloatingPointerService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_LOCK    -> setLocked(true)
-            ACTION_UNLOCK  -> setLocked(false)
-            ACTION_REFRESH -> applyLockedFlag()
-            ACTION_RESIZE  -> applySize()
+            ACTION_START            -> startAutoClick()
+            ACTION_SHOW_ONLY        -> { /* dot shown in onCreate */ }
+            ACTION_LOCK             -> setLocked(true)
+            ACTION_UNLOCK           -> setLocked(false)
+            ACTION_REFRESH          -> applyLockedFlag()
+            ACTION_RESIZE           -> applySize()
             ACTION_AUTO_CLICK_START -> startAutoClick()
             ACTION_AUTO_CLICK_STOP  -> stopAutoClick()
         }
@@ -316,17 +317,22 @@ class FloatingPointerService : Service() {
     companion object {
         private val HIDE_TOKEN = Any()
 
-        const val ACTION_LOCK              = "com.ghosttype.pointer.LOCK"
-        const val ACTION_UNLOCK            = "com.ghosttype.pointer.UNLOCK"
-        const val ACTION_REFRESH           = "com.ghosttype.pointer.REFRESH"
-        const val ACTION_RESIZE            = "com.ghosttype.pointer.RESIZE"
-        const val ACTION_AUTO_CLICK_START  = "com.ghosttype.pointer.AUTO_CLICK_START"
-        const val ACTION_AUTO_CLICK_STOP   = "com.ghosttype.pointer.AUTO_CLICK_STOP"
+        const val ACTION_START            = "com.ghosttype.pointer.START"
+        const val ACTION_SHOW_ONLY        = "com.ghosttype.pointer.SHOW_ONLY"
+        const val ACTION_LOCK             = "com.ghosttype.pointer.LOCK"
+        const val ACTION_UNLOCK           = "com.ghosttype.pointer.UNLOCK"
+        const val ACTION_REFRESH          = "com.ghosttype.pointer.REFRESH"
+        const val ACTION_RESIZE           = "com.ghosttype.pointer.RESIZE"
+        const val ACTION_AUTO_CLICK_START = "com.ghosttype.pointer.AUTO_CLICK_START"
+        const val ACTION_AUTO_CLICK_STOP  = "com.ghosttype.pointer.AUTO_CLICK_STOP"
 
         @Volatile var instance: FloatingPointerService? = null
 
         fun start(ctx: Context) {
-            ctx.startService(Intent(ctx, FloatingPointerService::class.java))
+            ctx.startService(Intent(ctx, FloatingPointerService::class.java).setAction(ACTION_START))
+        }
+        fun showDotOnly(ctx: Context) {
+            ctx.startService(Intent(ctx, FloatingPointerService::class.java).setAction(ACTION_SHOW_ONLY))
         }
         fun stop(ctx: Context) {
             ctx.stopService(Intent(ctx, FloatingPointerService::class.java))
