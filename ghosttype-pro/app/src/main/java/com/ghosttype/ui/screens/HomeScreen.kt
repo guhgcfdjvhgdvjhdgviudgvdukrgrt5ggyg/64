@@ -141,7 +141,7 @@ fun HomeScreen(onOpenImeSettings: () -> Unit, onOpenAccessibility: () -> Unit) {
 
         // ── Setup steps ──────────────────────────────────────
         StepCard("1", "Enable the keyboard",
-            "Go to System Settings → Languages & Input → Manage Keyboards and toggle GhostType Pro ON.",
+            "Go to System Settings -> Languages & Input -> Manage Keyboards and toggle GhostType Pro ON.",
             "Open Keyboard Settings", imeEnabled, onOpenImeSettings)
 
         StepCard("2", "Set as default input method",

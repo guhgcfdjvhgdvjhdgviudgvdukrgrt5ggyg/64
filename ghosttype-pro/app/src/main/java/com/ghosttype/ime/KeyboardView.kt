@@ -1634,7 +1634,7 @@ class KeyboardView(
             textSize = 13f
         })
         root.addView(TextView(context).apply {
-            text = if (state.currentLine.isNotEmpty()) "→ ${state.currentLine}" else " "
+            text = if (state.currentLine.isNotEmpty()) "-> ${state.currentLine}" else " "
             setTextColor(Color.LTGRAY)
             textSize = 11f
             maxLines = 1

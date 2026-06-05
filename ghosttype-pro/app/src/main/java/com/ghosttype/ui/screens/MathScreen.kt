@@ -176,9 +176,9 @@ fun MathScreen() {
                 Text(
                     "1. Turn Math Mode ON above\n" +
                     "2. Set Type Count (how many times each line types)\n" +
-                    "3. Go to Auto-Type → add messages → Start\n" +
+                    "3. Go to Auto-Type -> add messages -> Start\n" +
                     "4. Letters auto-convert to numbers while typing\n\n" +
-                    "OR  →  tap ≡ on keyboard → Aa → select Math style",
+                    "OR  ->  tap ≡ on keyboard -> Aa -> select Math style",
                     color = Color(0xFFAAAAAA),
                     fontSize = 13.sp
                 )
@@ -187,7 +187,7 @@ fun MathScreen() {
 
         // ── Letter → Number mapping ───────────────────────────────
         Text(
-            "Letter → Number Mapping",
+            "Letter -> Number Mapping",
             color = Orange,
             fontWeight = FontWeight.Bold,
             fontSize = 14.sp,
