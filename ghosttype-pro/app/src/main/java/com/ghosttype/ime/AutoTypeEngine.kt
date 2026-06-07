@@ -106,7 +106,7 @@ object AutoTypeEngine {
         val px = prefs.getInt(SettingsStore.KEY_POINTER_X, -1)
         val py = prefs.getInt(SettingsStore.KEY_POINTER_Y, -1)
         val charDelayMs = prefs.getInt(SettingsStore.KEY_AT_CHAR_DELAY_MS, 35).coerceIn(0, 500).toLong()
-        val pointerClickDelayMs = prefs.getInt(SettingsStore.KEY_POINTER_CLICK_DELAY_MS, 0).coerceIn(0, 5000).toLong()
+        val pointerClickDelayMs = prefs.getInt(SettingsStore.KEY_POINTER_CLICK_DELAY_MS, 0).coerceIn(0, 400000).toLong()
         // v1.10 — optional "Target name" prefix. Read once at session start
         // (not per-line) so toggling it mid-run doesn't produce mixed output.
         // When blank/unset we skip the prefix entirely → no behavioural
