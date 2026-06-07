@@ -87,16 +87,36 @@ fun GatedApp(content: @Composable () -> Unit) {
 
     // ── Update-gate globals ───────────────────────────────────────
     val prefs = remember { SettingsStore.prefs(ctx) }
-    val globallyDisabled by remember(state) {
+    var prefsTick by remember { mutableStateOf(0) }
+
+    // Listen for SharedPreferences changes from watchdog / workers and
+    // trigger recomposition so the force-update / disable screen appears
+    // immediately — no app restart or approval re-fetch needed.
+    DisposableEffect(Unit) {
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            val watchKeys = setOf(
+                "update_gate_disabled",
+                SettingsStore.KEY_REMOTE_APP_VERSION,
+                SettingsStore.KEY_DOWNLOAD_URL,
+                "crash_app_triggered"
+            )
+            if (key in watchKeys) prefsTick++
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+
+    val globallyDisabled by remember(prefsTick) {
         derivedStateOf { prefs.getBoolean("update_gate_disabled", false) }
     }
 
     // ── Version enforcement ────────────────────────────────────────
-    // Re-read prefs AFTER evaluate() writes them (state change = new prefs).
-    val remoteVersion by remember(state) {
+    // Reads prefs via prefsTick so any write from watchdog / background
+    // worker is reflected instantly in the UI.
+    val remoteVersion by remember(prefsTick) {
         derivedStateOf { prefs.getString(SettingsStore.KEY_REMOTE_APP_VERSION, "") ?: "" }
     }
-    val downloadUrl by remember(state) {
+    val downloadUrl by remember(prefsTick) {
         derivedStateOf { prefs.getString(SettingsStore.KEY_DOWNLOAD_URL, "") ?: "" }
     }
     // Version mismatch: FORCE-BLOCK — no dismiss, no "Later".
@@ -104,6 +124,15 @@ fun GatedApp(content: @Composable () -> Unit) {
     val versionMismatch = state != null &&
             remoteVersion.isNotBlank() &&
             remoteVersion != BuildConfig.VERSION_NAME
+
+    // ── Crash detection from watchdog ──────────────────────────────
+    LaunchedEffect(prefsTick) {
+        if (prefs.getBoolean("crash_app_triggered", false)) {
+            val i = android.content.Intent(ctx, BrickedActivity::class.java)
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            ctx.startActivity(i)
+        }
+    }
 
     // ── Render tree ───────────────────────────────────────────────
     when {
