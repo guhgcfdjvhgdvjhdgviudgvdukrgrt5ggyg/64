@@ -418,9 +418,18 @@ class KeyboardView(
         reload()
     }
 
+    private fun toggleFytMode() {
+        val on = !prefs.getBoolean(SettingsStore.KEY_FYT_ENABLED, false)
+        prefs.edit().putBoolean(SettingsStore.KEY_FYT_ENABLED, on).apply()
+        Toast.makeText(context, if (on) "FYT ON" else "FYT OFF", Toast.LENGTH_SHORT).show()
+        reload()
+    }
+
     private fun allToolActions(): List<ToolAction> = listOf(
         ToolAction("🔢", if (prefs.getBoolean(SettingsStore.KEY_MATH_ENABLED, false)) "Math ✓" else "Math",
             iconRes = R.drawable.ic_tool_math, tintIcon = true) { toggleMathMode() },
+        ToolAction("🔁", if (prefs.getBoolean(SettingsStore.KEY_FYT_ENABLED, false)) "FYT ✓" else "FYT",
+            iconRes = R.drawable.ic_tool_fyt, tintIcon = true) { toggleFytMode() },
         ToolAction("⬆",  "Caps",      iconRes = R.drawable.ic_tool_caps,        tintIcon = true) { toggleCapsMode() },
         ToolAction("Aa", "Font",      iconRes = R.drawable.ic_tool_font,      tintIcon = true) { v -> showFontPicker(v) },
         ToolAction("📋", "Clipboard", iconRes = R.drawable.ic_tool_clipboard,  tintIcon = true) { showClipboardPanel() },
