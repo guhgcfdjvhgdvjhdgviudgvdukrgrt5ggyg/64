@@ -65,17 +65,9 @@ enum class PanelMode { KEYS, EMOJI, AUTOTYPE, TOOLS, CLIPBOARD, MATH, FYT, CAPS,
 // ── Cute keyboard sticker / number-hint data ────────────────────────────────
 // NUMBER_HINTS: small number shown at top-left of Q-P keys (matches the
 //   pastel keyboard aesthetic where numbers are embedded in the letter row).
-// STICKER_MAP: tiny emoji overlaid at top-right of specific keys for the
-//   cute decoration effect visible in the reference screenshot.
 private val NUMBER_HINTS = mapOf(
     "q" to "1", "w" to "2", "e" to "3", "r" to "4", "t" to "5",
     "y" to "6", "u" to "7", "i" to "8", "o" to "9", "p" to "0"
-)
-private val STICKER_MAP = mapOf(
-    "e" to "✦", "t" to "🩷",
-    "w" to "💫", "u" to "🩷",
-    "d" to "✦", "h" to "🩷", "l" to "🌈",
-    "z" to "🌈", "b" to "🌈", "n" to "🍀"
 )
 
 class KeyboardView(
@@ -1058,16 +1050,7 @@ class KeyboardView(
                 }
 
                 val tv = TextView(context).apply {
-                    val isKawaii = theme.id == "kawaii_bubble"
-                    val isEmojiBlue = theme.id == "emoji_blue"
-                    val isCuteTheme = isKawaii || isEmojiBlue
                     val display = when {
-                        // kawaii bubble / emoji blue — special keys show cute emoji icons
-                        isCuteTheme && key.type == KeyType.SHIFT ->
-                            if (capsMode) "❤️⬆" else "❤️"
-                        isCuteTheme && key.type == KeyType.BACKSPACE -> "⭐✕"
-                        isCuteTheme && key.type == KeyType.ENTER -> "🌈↩"
-                        // standard labels below
                         // v1.10 — space-bar branding label is XOR-encrypted
                         // (ObfConstants.SPACE_LABEL bound to the keystore SHA).
                         // Decoded here at render time so the literal "I love
@@ -1082,23 +1065,10 @@ class KeyboardView(
                         else -> if (shifted && key.type == KeyType.CHAR) key.label.uppercase() else key.label
                     }
                     text = display
-                    setTextColor(
-                        // cute themes: shift/backspace/enter get coloured emoji so
-                        // they stay readable — emoji are full-colour but if we keep
-                        // theme.keyText on a pure-emoji label Android still renders the
-                        // glyph correctly; we only override text colour for clarity.
-                        if (isCuteTheme && key.type in listOf(
-                                KeyType.SHIFT, KeyType.BACKSPACE, KeyType.ENTER)) {
-                            android.graphics.Color.parseColor("#28436A")
-                        } else theme.keyText
-                    )
+                    setTextColor(theme.keyText)
                     gravity = Gravity.CENTER
                     setTypeface(typeface)
-                    textSize = when {
-                        isCuteTheme && key.type in listOf(
-                            KeyType.SHIFT, KeyType.BACKSPACE, KeyType.ENTER) -> keyTextSize + 4f
-                        else -> keyTextSize
-                    }
+                    textSize = keyTextSize
                     background = normalBgDrawable
                     val mPx = dp(2)
                     setPadding(mPx, mPx, mPx, mPx)
@@ -1209,16 +1179,11 @@ class KeyboardView(
                 val params = LayoutParams(0, LayoutParams.MATCH_PARENT, key.widthWeight)
                 params.setMargins(keyMarginPx, keyMarginPx, keyMarginPx, keyMarginPx)
 
-                // ── Cute sticker / number-hint overlays ──────────────────
-                // Matches the pastel keyboard aesthetic: small number hints
-                // at top-right of Q-P keys, tiny emoji stickers on select
-                // letter keys (matching the reference screenshot).
+                // ── Number-hint overlays ──────────────────
                 val numHint = if (key.type == KeyType.CHAR && !applyBgToKeys)
                     NUMBER_HINTS[key.output.lowercase()] else null
-                val sticker = if (key.type == KeyType.CHAR && !applyBgToKeys)
-                    STICKER_MAP[key.output.lowercase()] else null
 
-                if (numHint != null || sticker != null) {
+                if (numHint != null) {
                     val frame = FrameLayout(context).apply {
                         clipChildren = false
                         clipToPadding = false
@@ -1228,29 +1193,16 @@ class KeyboardView(
                         FrameLayout.LayoutParams.MATCH_PARENT
                     )
                     frame.addView(tv)
-                    if (numHint != null) {
-                        frame.addView(TextView(context).apply {
-                            text = numHint
-                            textSize = 9f
-                            setTextColor((theme.keyText and 0x00FFFFFF) or 0x99000000.toInt())
-                            layoutParams = FrameLayout.LayoutParams(
-                                FrameLayout.LayoutParams.WRAP_CONTENT,
-                                FrameLayout.LayoutParams.WRAP_CONTENT,
-                                Gravity.TOP or Gravity.START
-                            ).also { it.setMargins(dp(5), dp(4), 0, 0) }
-                        })
-                    }
-                    if (sticker != null) {
-                        frame.addView(TextView(context).apply {
-                            text = sticker
-                            textSize = 10f
-                            layoutParams = FrameLayout.LayoutParams(
-                                FrameLayout.LayoutParams.WRAP_CONTENT,
-                                FrameLayout.LayoutParams.WRAP_CONTENT,
-                                Gravity.TOP or Gravity.END
-                            ).also { it.setMargins(0, dp(3), dp(4), 0) }
-                        })
-                    }
+                    frame.addView(TextView(context).apply {
+                        text = numHint
+                        textSize = 9f
+                        setTextColor((theme.keyText and 0x00FFFFFF) or 0x99000000.toInt())
+                        layoutParams = FrameLayout.LayoutParams(
+                            FrameLayout.LayoutParams.WRAP_CONTENT,
+                            FrameLayout.LayoutParams.WRAP_CONTENT,
+                            Gravity.TOP or Gravity.START
+                        ).also { it.setMargins(dp(5), dp(4), 0, 0) }
+                    })
                     rowView.addView(frame, params)
                 } else {
                     rowView.addView(tv, params)
