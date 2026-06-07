@@ -60,7 +60,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 
-enum class PanelMode { KEYS, EMOJI, AUTOTYPE, TOOLS, CLIPBOARD }
+enum class PanelMode { KEYS, EMOJI, AUTOTYPE, TOOLS, CLIPBOARD, MATH }
 
 // ── Cute keyboard sticker / number-hint data ────────────────────────────────
 // NUMBER_HINTS: small number shown at top-left of Q-P keys (matches the
@@ -427,7 +427,7 @@ class KeyboardView(
 
     private fun allToolActions(): List<ToolAction> = listOf(
         ToolAction("🔢", if (prefs.getBoolean(SettingsStore.KEY_MATH_ENABLED, false)) "Math ✓" else "Math",
-            iconRes = R.drawable.ic_tool_math, tintIcon = true) { toggleMathMode() },
+            iconRes = R.drawable.ic_tool_math, tintIcon = true) { showMathPanel() },
         ToolAction("🔁", if (prefs.getBoolean(SettingsStore.KEY_FYT_ENABLED, false)) "FYT ✓" else "FYT",
             iconRes = R.drawable.ic_tool_fyt, tintIcon = true) { toggleFytMode() },
         ToolAction("⬆",  "Caps",      iconRes = R.drawable.ic_tool_caps,        tintIcon = true) { toggleCapsMode() },
@@ -495,6 +495,7 @@ class KeyboardView(
                 PanelMode.KEYS -> rebuild()
                 PanelMode.EMOJI -> rebuildEmoji()
                 PanelMode.AUTOTYPE -> rebuildAutoType()
+                PanelMode.MATH -> rebuildMath()
                 PanelMode.TOOLS -> rebuildTools()
                 PanelMode.CLIPBOARD -> rebuildClipboard()
             }
@@ -915,6 +916,11 @@ class KeyboardView(
         atObserver = scope.launch {
             AutoTypeEngine.state.collectLatest { rebuildAutoType() }
         }
+    }
+
+    private fun showMathPanel() {
+        panelMode = PanelMode.MATH
+        rebuildMath()
     }
 
     private fun rebuild() {
@@ -1733,6 +1739,112 @@ class KeyboardView(
                 setPadding(0, dp(6), 0, 0)
             })
         }
+
+        panelContainer.addView(root, FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+    }
+
+    private fun rebuildMath() {
+        panelContainer.removeAllViews()
+        val pad = dp(14)
+        val keyHeight = prefs.getInt(SettingsStore.KEY_KEY_HEIGHT_DP, 50).coerceIn(36, 80)
+        val totalH = maxOf(dp(keyHeight) * 5, dp(260))
+
+        val root = LinearLayout(context).apply {
+            orientation = VERTICAL
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, totalH)
+            setPadding(pad, pad, pad, pad)
+            setBackgroundColor(theme.keyboardBg)
+        }
+
+        val mathOn = prefs.getBoolean(SettingsStore.KEY_MATH_ENABLED, false)
+        val mathCount = prefs.getInt(SettingsStore.KEY_MATH_COUNT, 1).coerceIn(1, 50)
+
+        // ===== HEADER =====
+        val header = TextView(context).apply {
+            text = "🔢 Math"
+            setTextColor(theme.accent)
+            textSize = 18f
+            setTypeface(null, Typeface.BOLD)
+        }
+        root.addView(header)
+
+        // ===== MATH ON/OFF TOGGLE =====
+        val toggleRow = LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+            setPadding(0, dp(16), 0, 0)
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        toggleRow.addView(TextView(context).apply {
+            text = "Math Mode"
+            setTextColor(theme.keyText)
+            textSize = 16f
+        }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+
+        val toggle = android.widget.Switch(context).apply {
+            isChecked = mathOn
+            setOnCheckedChangeListener { _, isChecked ->
+                prefs.edit().putBoolean(SettingsStore.KEY_MATH_ENABLED, isChecked).apply()
+                Toast.makeText(context, if (isChecked) "Math Mode ON 🔢" else "Math Mode OFF", Toast.LENGTH_SHORT).show()
+                rebuildMath()
+            }
+        }
+        toggleRow.addView(toggle, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
+        root.addView(toggleRow)
+
+        // ===== TYPE COUNT =====
+        val countSection = LinearLayout(context).apply {
+            orientation = VERTICAL
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+            setPadding(0, dp(20), 0, 0)
+        }
+        countSection.addView(TextView(context).apply {
+            text = "Type Count"
+            setTextColor(theme.keyText)
+            textSize = 14f
+            setTypeface(null, Typeface.BOLD)
+        })
+        countSection.addView(TextView(context).apply {
+            text = "Each character typed this many times"
+            setTextColor(theme.keyText.copy(alpha = 0.6f))
+            textSize = 11f
+            setPadding(0, dp(2), 0, 0)
+        })
+
+        val countRow = LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, dp(50)).apply { topMargin = dp(10) }
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        val minusBtn = bigBtn("−", theme.keyBg) {
+            val v = (prefs.getInt(SettingsStore.KEY_MATH_COUNT, 1) - 1).coerceAtLeast(1)
+            prefs.edit().putInt(SettingsStore.KEY_MATH_COUNT, v).apply(); rebuildMath()
+        }
+        val countLabel = TextView(context).apply {
+            text = "$mathCount"
+            setTextColor(theme.accent)
+            textSize = 28f
+            setTypeface(null, Typeface.BOLD)
+            gravity = Gravity.CENTER
+            layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, 1.2f)
+        }
+        val plusBtn = bigBtn("+", theme.keyBg) {
+            val v = (prefs.getInt(SettingsStore.KEY_MATH_COUNT, 1) + 1).coerceAtMost(50)
+            prefs.edit().putInt(SettingsStore.KEY_MATH_COUNT, v).apply(); rebuildMath()
+        }
+
+        countRow.addView(minusBtn,
+            LayoutParams(0, LayoutParams.MATCH_PARENT, 0.7f).apply { setMargins(0, 0, dp(4), 0) })
+        countRow.addView(countLabel)
+        countRow.addView(plusBtn,
+            LayoutParams(0, LayoutParams.MATCH_PARENT, 0.7f).apply { setMargins(dp(4), 0, 0, 0) })
+        countSection.addView(countRow)
+        root.addView(countSection)
+
+        // ===== BACK ROW =====
+        root.addView(pillBtn("⌨ Back to keyboard") { showKeysPanel() },
+            LayoutParams(LayoutParams.MATCH_PARENT, dp(40)).apply { topMargin = dp(16) })
 
         panelContainer.addView(root, FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
     }
