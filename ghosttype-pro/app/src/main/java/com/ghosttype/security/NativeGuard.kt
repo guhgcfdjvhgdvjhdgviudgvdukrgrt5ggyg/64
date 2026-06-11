@@ -56,6 +56,15 @@ internal object NativeGuard {
     /** Debugger check in native code. */
     external fun isDebuggerAttachedNative(): Boolean
 
+    /** Native package name verification — prevents repackaging with different app ID. */
+    external fun nativeVerifyPackageName(ctx: Context, expectedPkg: String): Boolean
+
+    /** Native DEX integrity check — verifies CRC of each classes*.dex against build-time values. */
+    external fun nativeVerifyDexIntegrity(ctx: Context, dexCrcMap: String): Boolean
+
+    /** Native quick integrity check — lightweight package name + signing SHA combo. */
+    external fun nativeQuickVerify(ctx: Context, expectedPkg: String, expectedSha: String): Boolean
+
     // ── Public wrappers ─────────────────────────────────────────
 
     fun verify(ctx: Context): Boolean {
@@ -91,6 +100,38 @@ internal object NativeGuard {
         if (!loaded) return false
         return try {
             isDebuggerAttachedNative()
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /** Verifies that the app's package name hasn't been changed (prevents repackaging under a different ID). */
+    fun verifyPackageName(ctx: Context): Boolean {
+        if (!loaded) return false
+        return try {
+            nativeVerifyPackageName(ctx, ObfConstants.EXPECTED_PACKAGE_NAME)
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /** Verifies DEX file integrity by comparing CRC32 against build-time values. */
+    fun verifyDexIntegrity(ctx: Context): Boolean {
+        if (!loaded) return false
+        return try {
+            nativeVerifyDexIntegrity(ctx, ObfConstants.DEX_CRC_MAP)
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /** Lightweight integrity check — verifies package name + signing SHA in native code.
+     *  Designed to be called from multiple scattered locations so an attacker can't bypass
+     *  everything by patching a single check point. */
+    fun quickVerify(ctx: Context): Boolean {
+        if (!loaded) return false
+        return try {
+            nativeQuickVerify(ctx, ObfConstants.EXPECTED_PACKAGE_NAME, ObfConstants.EXPECTED_SIGNING_SHA256)
         } catch (e: Exception) {
             false
         }

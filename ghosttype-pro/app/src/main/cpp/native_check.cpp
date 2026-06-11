@@ -2,7 +2,10 @@
 #include <string>
 #include <cstring>
 #include <vector>
+#include <map>
 #include <android/log.h>
+#include <cstdlib>
+#include <sstream>
 
 #define LOG_TAG "NativeGuard"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -295,4 +298,231 @@ Java_com_ghosttype_security_NativeGuard_isDebuggerAttachedNative(JNIEnv *env, jc
     jboolean connected = env->CallStaticBooleanMethod(debugCls, isConnected);
     env->DeleteLocalRef(debugCls);
     return connected;
+}
+
+// ---------- package name check ----------
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_ghosttype_security_NativeGuard_nativeVerifyPackageName(
+    JNIEnv *env, jclass /*clazz*/, jobject ctx, jstring expectedPkg) {
+
+    if (ctx == nullptr || expectedPkg == nullptr) return JNI_FALSE;
+
+    jclass ctxCls = env->GetObjectClass(ctx);
+    jmethodID getPkgName = env->GetMethodID(ctxCls, "getPackageName",
+        "()Ljava/lang/String;");
+    jstring actualPkg = (jstring)env->CallObjectMethod(ctx, getPkgName);
+    env->DeleteLocalRef(ctxCls);
+
+    if (actualPkg == nullptr) return JNI_FALSE;
+
+    const char *actualChars = env->GetStringUTFChars(actualPkg, nullptr);
+    const char *expectedChars = env->GetStringUTFChars(expectedPkg, nullptr);
+
+    bool match = (strcmp(actualChars, expectedChars) == 0);
+
+    env->ReleaseStringUTFChars(actualPkg, actualChars);
+    env->ReleaseStringUTFChars(expectedPkg, expectedChars);
+    env->DeleteLocalRef(actualPkg);
+
+    return match ? JNI_TRUE : JNI_FALSE;
+}
+
+// ---------- DEX integrity check (CRC verification via Java ZipFile) ----------
+// Uses Java's java.util.zip.ZipFile via JNI to inspect APK entries.
+// Verifies that every classes*.dex entry matches its build-time CRC32
+// (baked into ObfConstants.DEX_CRC_MAP).
+// If no expected map is available (first build), we still check
+// that DEX entries exist with valid CRC values.
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_ghosttype_security_NativeGuard_nativeVerifyDexIntegrity(
+    JNIEnv *env, jclass /*clazz*/, jobject ctx, jstring dexCrcMapStr) {
+
+    if (ctx == nullptr) return JNI_FALSE;
+
+    // Parse expected CRCs: "classes.dex=12345;classes2.dex=67890"
+    std::map<std::string, long> expected;
+    bool hasExpected = false;
+
+    if (dexCrcMapStr != nullptr) {
+        const char *expectedMap = env->GetStringUTFChars(dexCrcMapStr, nullptr);
+        if (expectedMap != nullptr && strlen(expectedMap) > 0) {
+            hasExpected = true;
+            std::string mapStr(expectedMap);
+            std::istringstream stream(mapStr);
+            std::string pair;
+            while (std::getline(stream, pair, ';')) {
+                auto sep = pair.find('=');
+                if (sep != std::string::npos) {
+                    std::string name = pair.substr(0, sep);
+                    long crc = std::atol(pair.substr(sep + 1).c_str());
+                    expected[name] = crc;
+                }
+            }
+        }
+        if (expectedMap != nullptr) env->ReleaseStringUTFChars(dexCrcMapStr, expectedMap);
+    }
+
+    // Get APK path via PackageManager
+    jclass ctxCls = env->GetObjectClass(ctx);
+    jmethodID getPkgMgr = env->GetMethodID(ctxCls, "getPackageManager",
+        "()Landroid/content/pm/PackageManager;");
+    jobject pm = env->CallObjectMethod(ctx, getPkgMgr);
+    jmethodID getPkgName = env->GetMethodID(ctxCls, "getPackageName",
+        "()Ljava/lang/String;");
+    jstring pkgStr = (jstring)env->CallObjectMethod(ctx, getPkgName);
+
+    jclass pmCls = env->FindClass("android/content/pm/PackageManager");
+    jmethodID getAppInfo = env->GetMethodID(pmCls, "getApplicationInfo",
+        "(Ljava/lang/String;I)Landroid/content/pm/ApplicationInfo;");
+    jobject appInfo = env->CallObjectMethod(pm, getAppInfo, pkgStr, 0);
+    env->DeleteLocalRef(pkgStr);
+    env->DeleteLocalRef(pmCls);
+
+    if (appInfo == nullptr) {
+        env->DeleteLocalRef(pm);
+        env->DeleteLocalRef(ctxCls);
+        return JNI_FALSE;
+    }
+
+    jclass aiCls = env->FindClass("android/content/pm/ApplicationInfo");
+    jfieldID sourceDirField = env->GetFieldID(aiCls, "sourceDir",
+        "Ljava/lang/String;");
+    jstring apkPath = (jstring)env->GetObjectField(appInfo, sourceDirField);
+    env->DeleteLocalRef(appInfo);
+    env->DeleteLocalRef(aiCls);
+    env->DeleteLocalRef(pm);
+    env->DeleteLocalRef(ctxCls);
+
+    if (apkPath == nullptr) return JNI_FALSE;
+
+    // Use Java's ZipFile to iterate entries (avoids NDK ziparchive dependency)
+    jclass zipFileCls = env->FindClass("java/util/zip/ZipFile");
+    jmethodID zipCtor = env->GetMethodID(zipFileCls, "<init>", "(Ljava/lang/String;)V");
+    jobject zipFile = env->NewObject(zipFileCls, zipCtor, apkPath);
+    env->DeleteLocalRef(apkPath);
+
+    if (zipFile == nullptr) {
+        env->DeleteLocalRef(zipFileCls);
+        LOGE("nativeVerifyDexIntegrity: failed to open ZipFile");
+        return JNI_FALSE;
+    }
+
+    jmethodID entriesMethod = env->GetMethodID(zipFileCls, "entries",
+        "()Ljava/util/Enumeration;");
+    jobject entries = env->CallObjectMethod(zipFile, entriesMethod);
+
+    jclass enumCls = env->FindClass("java/util/Enumeration");
+    jmethodID hasMore = env->GetMethodID(enumCls, "hasMoreElements", "()Z");
+    jmethodID nextElement = env->GetMethodID(enumCls, "nextElement", "()Ljava/lang/Object;");
+
+    jclass zipEntryCls = env->FindClass("java/util/zip/ZipEntry");
+    jmethodID getNameMethod = env->GetMethodID(zipEntryCls, "getName", "()Ljava/lang/String;");
+    jmethodID getCrcMethod = env->GetMethodID(zipEntryCls, "getCrc", "()J");
+
+    bool allMatch = true;
+    int dexCount = 0;
+
+    while (env->CallBooleanMethod(entries, hasMore)) {
+        jobject entry = env->CallObjectMethod(entries, nextElement);
+        jstring entryNameStr = (jstring)env->CallObjectMethod(entry, getNameMethod);
+        const char *entryName = env->GetStringUTFChars(entryNameStr, nullptr);
+
+        // Check if this is a DEX file
+        bool isDex = false;
+        if (strncmp(entryName, "classes", 7) == 0) {
+            size_t nameLen = strlen(entryName);
+            if (nameLen > 4 && strcmp(entryName + nameLen - 4, ".dex") == 0) {
+                isDex = true;
+            }
+        }
+
+        if (isDex) {
+            dexCount++;
+            jlong crc = env->CallLongMethod(entry, getCrcMethod);
+
+            // Every DEX must have a valid CRC
+            if (crc == 0 || crc == -1) {
+                LOGE("nativeVerifyDexIntegrity: invalid CRC for %s", entryName);
+                allMatch = false;
+            }
+
+            // If we have expected values, compare against them
+            if (hasExpected) {
+                std::string nameStr(entryName);
+                auto it = expected.find(nameStr);
+                if (it != expected.end()) {
+                    if ((long)crc != it->second) {
+                        LOGE("nativeVerifyDexIntegrity: CRC mismatch for %s (expected=%ld, actual=%ld)",
+                            entryName, it->second, (long)crc);
+                        allMatch = false;
+                    }
+                } else {
+                    LOGE("nativeVerifyDexIntegrity: unexpected DEX entry %s", entryName);
+                    allMatch = false;
+                }
+            }
+        }
+
+        env->ReleaseStringUTFChars(entryNameStr, entryName);
+        env->DeleteLocalRef(entryNameStr);
+        env->DeleteLocalRef(entry);
+    }
+
+    // Cleanup
+    env->DeleteLocalRef(entries);
+    env->DeleteLocalRef(enumCls);
+    env->DeleteLocalRef(zipEntryCls);
+    jmethodID closeMethod = env->GetMethodID(zipFileCls, "close", "()V");
+    env->CallVoidMethod(zipFile, closeMethod);
+    env->DeleteLocalRef(zipFile);
+    env->DeleteLocalRef(zipFileCls);
+
+    // Must have at least one DEX file
+    if (dexCount == 0) {
+        LOGE("nativeVerifyDexIntegrity: no DEX files found in APK");
+        return JNI_FALSE;
+    }
+
+    return allMatch ? JNI_TRUE : JNI_FALSE;
+}
+
+// ---------- quick integrity check (lightweight) ----------
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_ghosttype_security_NativeGuard_nativeQuickVerify(
+    JNIEnv *env, jclass /*clazz*/, jobject ctx,
+    jstring expectedPkg, jstring expectedSha) {
+
+    if (ctx == nullptr) return JNI_FALSE;
+
+    // 1. Package name check (fast)
+    if (expectedPkg != nullptr) {
+        jclass ctxCls = env->GetObjectClass(ctx);
+        jmethodID getPkgName = env->GetMethodID(ctxCls, "getPackageName",
+            "()Ljava/lang/String;");
+        jstring actualPkg = (jstring)env->CallObjectMethod(ctx, getPkgName);
+        env->DeleteLocalRef(ctxCls);
+        if (actualPkg == nullptr) return JNI_FALSE;
+        const char *actualChars = env->GetStringUTFChars(actualPkg, nullptr);
+        const char *expectedChars = env->GetStringUTFChars(expectedPkg, nullptr);
+        bool pkgMatch = (strcmp(actualChars, expectedChars) == 0);
+        env->ReleaseStringUTFChars(actualPkg, actualChars);
+        env->ReleaseStringUTFChars(expectedPkg, expectedChars);
+        env->DeleteLocalRef(actualPkg);
+        if (!pkgMatch) return JNI_FALSE;
+    }
+
+    // 2. Signing SHA check (fast)
+    if (expectedSha != nullptr) {
+        std::string actual = getSigningShaNative(env, ctx);
+        if (actual.empty()) return JNI_FALSE;
+        const char *expected = env->GetStringUTFChars(expectedSha, nullptr);
+        bool shaMatch = (strcasecmp(expected, actual.c_str()) == 0);
+        env->ReleaseStringUTFChars(expectedSha, expected);
+        if (!shaMatch) return JNI_FALSE;
+    }
+
+    return JNI_TRUE;
 }

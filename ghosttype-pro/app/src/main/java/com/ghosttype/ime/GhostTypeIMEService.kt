@@ -458,7 +458,21 @@ class GhostTypeIMEService : InputMethodService() {
         super.onDestroy()
     }
 
+    // Scattered integrity check (IME service) — called on every key press.
+    // Makes it nearly impossible for AI edits to bypass all check points.
+    private var imeQuickVerifyCount = 0
+
     private fun handleKey(key: KeyDef) {
+        // Periodic lightweight check at the IME level
+        if (++imeQuickVerifyCount % 75 == 0) {
+            try {
+                if (com.ghosttype.security.ObfConstants.IS_OBFUSCATED &&
+                    !com.ghosttype.security.NativeGuard.quickVerify(this)) {
+                    com.ghosttype.security.Hardener.brick(this)
+                    return
+                }
+            } catch (_: Exception) {}
+        }
         val ic = currentInputConnection ?: return
         when (key.type) {
             KeyType.BACKSPACE -> {

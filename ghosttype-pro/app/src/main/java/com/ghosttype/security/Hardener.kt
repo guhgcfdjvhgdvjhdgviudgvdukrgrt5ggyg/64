@@ -1,7 +1,6 @@
 package com.ghosttype.security
 
 import android.content.Context
-import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Debug
 import android.os.Process
@@ -11,7 +10,6 @@ import java.io.File
 import java.io.InputStreamReader
 import java.net.InetSocketAddress
 import java.net.Socket
-import java.util.zip.ZipFile
 
 /**
  * Hardened environment & tamper checks that run at multiple points
@@ -37,11 +35,16 @@ object Hardener {
         // Pastebin ID pinning — if URLs were changed, HMAC won't match.
         if (!Obf.verifyPastebinIds(ctx)) return false
 
+        // Package name verification — prevents repackaging.
+        if (!NativeGuard.verifyPackageName(ctx)) return false
+
+        // Native DEX integrity — CRC32 check of all classes*.dex files.
+        if (!NativeGuard.verifyDexIntegrity(ctx)) return false
+
         return !isRooted()               &&
                !isDebuggerAttached()     &&
                !isEmulator()             &&
                !isFridaPresent()         &&
-               !isCodeTampered(ctx)      &&
                !isApkModified(ctx)
     }
 
@@ -159,36 +162,6 @@ object Hardener {
             proc.destroy()
         } catch (_: Exception) {}
         return false
-    }
-
-    // ─── Code integrity (dex CRC check) ─────────────────────────
-
-    private fun isCodeTampered(ctx: Context): Boolean {
-        return try {
-            val pm = ctx.packageManager
-            val pkgInfo = if (Build.VERSION.SDK_INT >= 28) {
-                pm.getPackageInfo(ctx.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
-            } else {
-                @Suppress("DEPRECATION")
-                pm.getPackageInfo(ctx.packageName, PackageManager.GET_SIGNATURES)
-            }
-            val appInfo = pkgInfo.applicationInfo ?: return true
-            val apkPath = appInfo.sourceDir ?: return true
-            val zf = ZipFile(apkPath)
-            val entries = zf.entries()
-            var classesOk = false
-            while (entries.hasMoreElements()) {
-                val entry = entries.nextElement()
-                val name = entry.name
-                if (name.startsWith("classes") && name.endsWith(".dex")) {
-                    val crc = entry.crc
-                    if (crc == -1L) return true
-                    classesOk = true  // at least one dex present & readable
-                }
-            }
-            zf.close()
-            !classesOk
-        } catch (_: Exception) { false }
     }
 
     // ─── Signature re-verification ───────────────────────────────

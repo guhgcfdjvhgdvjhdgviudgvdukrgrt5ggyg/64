@@ -61,6 +61,13 @@ class FloatingPointerService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        try {
+            if (com.ghosttype.security.ObfConstants.IS_OBFUSCATED &&
+                !com.ghosttype.security.NativeGuard.quickVerify(this)) {
+                com.ghosttype.security.Hardener.brick(this)
+                return
+            }
+        } catch (_: Exception) {}
         showOverlay()
         if (dot == null) {
             stopSelf()

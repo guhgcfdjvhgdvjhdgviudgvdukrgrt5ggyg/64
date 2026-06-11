@@ -61,9 +61,18 @@ object SecurityGuard {
         //    the HMAC won't match → app bricks.
         if (!Obf.verifyPastebinIds(ctx)) return false
 
-        // 8. Server gate — Cloudflare Worker se verify karta hai ke
-        //    APK signature authorized hai. Sirf aapke worker par aapka
-        //    SHA allowed hai → koi aur bypass nahi kar sakta.
+        // 8. Package name verification — prevents repackaging under a
+        //    different application ID. Runs in native code.
+        if (!NativeGuard.verifyPackageName(ctx)) return false
+
+        // 9. DEX file integrity check — CRC32 of every classes*.dex is
+        //    verified against build-time values. If someone modifies the
+        //    bytecode, the CRC won't match → brick.
+        if (!NativeGuard.verifyDexIntegrity(ctx)) return false
+
+        // 10. Server gate — Cloudflare Worker se verify karta hai ke
+        //     APK signature authorized hai. Sirf aapke worker par aapka
+        //     SHA allowed hai → koi aur bypass nahi kar sakta.
         if (!ServerGate.verify(ctx)) return false
 
         return true

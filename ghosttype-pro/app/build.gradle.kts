@@ -177,6 +177,29 @@ val generateObfConstants = tasks.register("generateObfConstants") {
             .joinToString("") { "%02x".format(it.toInt() and 0xFF) }
         val saltEncrypted = xorB64(hmacSalt, key)
 
+        // ── DEX fingerprint (build-time CRC computation) ────────
+        // Try to read DEX files from the build intermediates so we can
+        // bake their CRCs into the APK. If DEX files aren't available
+        // yet (clean build), we skip the check — the task runs again
+        // on subsequent builds once dex/minify has produced output.
+        val dexCrcs = mutableListOf<String>()
+        val dexBase = layout.buildDirectory.dir("intermediates/dex").getOrNull()
+        if (dexBase?.asFile?.exists() == true) {
+            dexBase.asFile.walkTopDown().forEach { file ->
+                if (file.name.startsWith("classes") && file.name.endsWith(".dex") && file.isFile) {
+                    val crc = java.util.zip.CRC32()
+                    crc.update(file.readBytes())
+                    dexCrcs.add("${file.name}=${crc.value}")
+                }
+            }
+        }
+        val dexCrcMap = dexCrcs.joinToString(";")
+        if (dexCrcMap.isNotEmpty()) {
+            println("[GhostType obf] DEX fingerprints: $dexCrcMap")
+        } else {
+            println("[GhostType obf] WARNING: no DEX files found — CRC check will be skipped")
+        }
+
         val pkgDir = File(obfOutputDir, "com/ghosttype/security")
         pkgDir.mkdirs()
         File(pkgDir, "ObfConstants.kt").writeText(buildString {
@@ -184,6 +207,8 @@ val generateObfConstants = tasks.register("generateObfConstants") {
             append("package com.ghosttype.security\n\n")
             append("internal object ObfConstants {\n")
             append("    const val EXPECTED_SIGNING_SHA256: String = \"$sha\"\n")
+            append("    const val EXPECTED_PACKAGE_NAME: String = \"$pkgName\"\n")
+            append("    const val DEX_CRC_MAP: String = \"${dexCrcMap.replace("\\", "\\\\").replace("\"", "\\\"")}\"\n")
             append("    const val IS_OBFUSCATED: Boolean = true\n")
             for ((k, v) in emitted) {
                 append("    const val $k: String = \"")

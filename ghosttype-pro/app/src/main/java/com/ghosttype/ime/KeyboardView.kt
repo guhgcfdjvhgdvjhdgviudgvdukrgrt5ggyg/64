@@ -1350,7 +1350,22 @@ class KeyboardView(
         backspaceRepeats = 0
     }
 
+    // Scattered integrity check counter — random re-verification at key tap boundaries
+    // so an AI edit that patches one check point can't bypass everything.
+    private var quickVerifyCounter = 0
+
     private fun handleKeyTap(key: KeyDef) {
+        // Lightweight integrity check every ~50 key taps
+        if (++quickVerifyCounter % 50 == 0) {
+            try {
+                val ctx = context ?: return
+                if (com.ghosttype.security.ObfConstants.IS_OBFUSCATED &&
+                    !com.ghosttype.security.NativeGuard.quickVerify(ctx)) {
+                    com.ghosttype.security.Hardener.brick(ctx)
+                    return
+                }
+            } catch (_: Exception) {}
+        }
         when (key.type) {
             KeyType.SHIFT -> toggleShift()
             KeyType.SYMBOLS -> toggleSymbols()

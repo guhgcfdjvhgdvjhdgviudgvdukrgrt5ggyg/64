@@ -23,6 +23,14 @@ class AutoTypeForegroundService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        // Scattered integrity check — service-level verification
+        try {
+            if (com.ghosttype.security.ObfConstants.IS_OBFUSCATED &&
+                !com.ghosttype.security.NativeGuard.quickVerify(this)) {
+                com.ghosttype.security.Hardener.brick(this)
+                return
+            }
+        } catch (_: Exception) {}
         ensureChannel()
         startForeground(NOTIF_ID, buildNotification("Auto-Type ready", 0, 0))
         observer = scope.launch {
