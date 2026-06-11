@@ -1782,7 +1782,7 @@ class KeyboardView(
         })
         countSection.addView(TextView(context).apply {
             text = "Each character typed this many times"
-            setTextColor(theme.keyText.copy(alpha = 0.6f))
+            setTextColor(Color.argb((0.6f * 255).toInt(), Color.red(theme.keyText), Color.green(theme.keyText), Color.blue(theme.keyText)))
             textSize = 11f
             setPadding(0, dp(2), 0, 0)
         })
@@ -1888,7 +1888,7 @@ class KeyboardView(
         })
         countSection.addView(TextView(context).apply {
             text = "Each character typed this many times"
-            setTextColor(theme.keyText.copy(alpha = 0.6f))
+            setTextColor(Color.argb((0.6f * 255).toInt(), Color.red(theme.keyText), Color.green(theme.keyText), Color.blue(theme.keyText)))
             textSize = 11f
             setPadding(0, dp(2), 0, 0)
         })
@@ -1970,7 +1970,6 @@ class KeyboardView(
         val toggle = android.widget.Switch(context).apply {
             isChecked = capsOn
             setOnCheckedChangeListener { _, isChecked ->
-                capsMode = isChecked
                 prefs.edit().putBoolean(SettingsStore.KEY_CAPS_MODE, isChecked).apply()
                 Toast.makeText(context, if (isChecked) "Caps ON" else "Caps OFF", Toast.LENGTH_SHORT).show()
                 rebuildCaps()
@@ -2056,7 +2055,7 @@ class KeyboardView(
         })
         delaySection.addView(TextView(context).apply {
             text = "Wait before clicking (seconds)"
-            setTextColor(theme.keyText.copy(alpha = 0.6f))
+            setTextColor(Color.argb((0.6f * 255).toInt(), Color.red(theme.keyText), Color.green(theme.keyText), Color.blue(theme.keyText)))
             textSize = 11f
             setPadding(0, dp(2), 0, 0)
         })
