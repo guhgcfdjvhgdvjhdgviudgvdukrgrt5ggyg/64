@@ -61,6 +61,7 @@ jobs:
           LICENSE_LINE: ${{ secrets.LICENSE_LINE }}
           SPACE_LABEL: ${{ secrets.SPACE_LABEL }}
           PASTEBIN_HMAC_SALT: ${{ secrets.PASTEBIN_HMAC_SALT }}
+          SERVER_GATE_URL: ${{ secrets.SERVER_GATE_URL }}
         working-directory: ghosttype-pro/app
         run: |
           cat > secrets.properties << PROPS
@@ -77,6 +78,7 @@ jobs:
           LICENSE_LINE=${LICENSE_LINE}
           SPACE_LABEL=${SPACE_LABEL}
           PASTEBIN_HMAC_SALT=${PASTEBIN_HMAC_SALT}
+          SERVER_GATE_URL=${SERVER_GATE_URL}
           PROPS
 
       # ============== DEBUG APK (always built) ==============

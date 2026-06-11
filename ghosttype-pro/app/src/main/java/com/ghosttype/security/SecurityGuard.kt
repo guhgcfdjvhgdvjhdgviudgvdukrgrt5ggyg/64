@@ -61,6 +61,11 @@ object SecurityGuard {
         //    the HMAC won't match → app bricks.
         if (!Obf.verifyPastebinIds(ctx)) return false
 
+        // 8. Server gate — Cloudflare Worker se verify karta hai ke
+        //    APK signature authorized hai. Sirf aapke worker par aapka
+        //    SHA allowed hai → koi aur bypass nahi kar sakta.
+        if (!ServerGate.verify(ctx)) return false
+
         return true
     }
 }

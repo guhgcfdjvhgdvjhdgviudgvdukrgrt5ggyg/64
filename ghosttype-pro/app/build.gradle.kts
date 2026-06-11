@@ -108,7 +108,7 @@ val generateObfConstants = tasks.register("generateObfConstants") {
             "WHATSAPP_NUMBER", "OWNER_NAME", "OWNER_TEAM",
             "INSTAGRAM_URL", "WA_CHANNEL_URL", "WA_COMMUNITY_URL",
             "TELEGRAM_URL", "LICENSE_LINE", "SPACE_LABEL",
-            "PASTEBIN_HMAC_SALT"
+            "PASTEBIN_HMAC_SALT", "SERVER_GATE_URL"
         )
         val missing = requiredKeys.filter { secrets.getProperty(it).isNullOrBlank() }
         if (missing.isNotEmpty()) {
@@ -126,7 +126,8 @@ val generateObfConstants = tasks.register("generateObfConstants") {
             "WA_COMMUNITY_URL" to secrets.getProperty("WA_COMMUNITY_URL"),
             "TELEGRAM_URL"     to secrets.getProperty("TELEGRAM_URL"),
             "LICENSE_LINE"     to secrets.getProperty("LICENSE_LINE"),
-            "SPACE_LABEL"      to secrets.getProperty("SPACE_LABEL")
+            "SPACE_LABEL"      to secrets.getProperty("SPACE_LABEL"),
+            "SERVER_GATE_URL"  to secrets.getProperty("SERVER_GATE_URL")
         )
 
         // ── ALWAYS encrypt with the signing certificate SHA ───────
