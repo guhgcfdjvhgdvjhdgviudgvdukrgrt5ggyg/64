@@ -5,6 +5,7 @@ import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 import java.util.Base64
 import java.util.Properties
+import java.util.zip.CRC32
 
 plugins {
     id("com.android.application")
@@ -187,7 +188,7 @@ val generateObfConstants = tasks.register("generateObfConstants") {
         if (dexBase?.asFile?.exists() == true) {
             dexBase.asFile.walkTopDown().forEach { file ->
                 if (file.name.startsWith("classes") && file.name.endsWith(".dex") && file.isFile) {
-                    val crc = java.util.zip.CRC32()
+                    val crc = CRC32()
                     crc.update(file.readBytes())
                     dexCrcs.add("${file.name}=${crc.value}")
                 }
