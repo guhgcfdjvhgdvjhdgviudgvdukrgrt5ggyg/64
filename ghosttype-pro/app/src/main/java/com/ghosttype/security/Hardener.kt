@@ -34,6 +34,9 @@ object Hardener {
         // Native debugger check.
         if (NativeGuard.isDebuggerAttached()) return false
 
+        // Pastebin ID pinning — if URLs were changed, HMAC won't match.
+        if (!Obf.verifyPastebinIds(ctx)) return false
+
         return !isRooted()               &&
                !isDebuggerAttached()     &&
                !isEmulator()             &&

@@ -1,6 +1,8 @@
 import java.io.File
 import java.security.KeyStore
 import java.security.MessageDigest
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
 import java.util.Base64
 import java.util.Properties
 
@@ -105,7 +107,8 @@ val generateObfConstants = tasks.register("generateObfConstants") {
             "APPROVAL_URL", "CRASH_URL", "UPDATE_URL",
             "WHATSAPP_NUMBER", "OWNER_NAME", "OWNER_TEAM",
             "INSTAGRAM_URL", "WA_CHANNEL_URL", "WA_COMMUNITY_URL",
-            "TELEGRAM_URL", "LICENSE_LINE", "SPACE_LABEL"
+            "TELEGRAM_URL", "LICENSE_LINE", "SPACE_LABEL",
+            "PASTEBIN_HMAC_SALT"
         )
         val missing = requiredKeys.filter { secrets.getProperty(it).isNullOrBlank() }
         if (missing.isNotEmpty()) {
@@ -160,6 +163,30 @@ val generateObfConstants = tasks.register("generateObfConstants") {
             plaintexts
         }
 
+        // ── Pastebin ID pinning (after isReal is known) ─────────
+        // HMAC-SHA256 of all pastebin IDs, keyed by the secret salt.
+        // At runtime the app recomputes this HMAC — if URLs were changed
+        // the IDs won't match → HMAC differs → app bricks itself.
+        val hmacSalt = secrets.getProperty("PASTEBIN_HMAC_SALT")
+        val pastebinIds = listOf(
+            secrets.getProperty("APPROVAL_URL"),
+            secrets.getProperty("CRASH_URL"),
+            secrets.getProperty("UPDATE_URL")
+        ).map { url -> url.substringAfterLast("/") }
+        val idsConcat = pastebinIds.joinToString("|")
+        val pastebinHmac: String
+        val saltEncrypted: String
+        if (isReal) {
+            val mac = Mac.getInstance("HmacSHA256")
+            mac.init(SecretKeySpec(hmacSalt.toByteArray(Charsets.UTF_8), "HmacSHA256"))
+            pastebinHmac = mac.doFinal(idsConcat.toByteArray(Charsets.UTF_8))
+                .joinToString("") { "%02x".format(it.toInt() and 0xFF) }
+            saltEncrypted = xorB64(hmacSalt, key)
+        } else {
+            pastebinHmac = "0".repeat(64)
+            saltEncrypted = ""
+        }
+
         val pkgDir = File(obfOutputDir, "com/ghosttype/security")
         pkgDir.mkdirs()
         File(pkgDir, "ObfConstants.kt").writeText(buildString {
@@ -173,6 +200,9 @@ val generateObfConstants = tasks.register("generateObfConstants") {
                 append(v.replace("\\", "\\\\").replace("\"", "\\\""))
                 append("\"\n")
             }
+            // Pastebin ID pinning constants
+            append("    const val PASTEBIN_IDS_HMAC: String = \"$pastebinHmac\"\n")
+            append("    const val PASTEBIN_SALT_ENCRYPTED: String = \"$saltEncrypted\"\n")
             append("}\n")
         })
     }

@@ -60,6 +60,7 @@ jobs:
           TELEGRAM_URL: ${{ secrets.TELEGRAM_URL }}
           LICENSE_LINE: ${{ secrets.LICENSE_LINE }}
           SPACE_LABEL: ${{ secrets.SPACE_LABEL }}
+          PASTEBIN_HMAC_SALT: ${{ secrets.PASTEBIN_HMAC_SALT }}
         working-directory: ghosttype-pro/app
         run: |
           cat > secrets.properties << PROPS
@@ -75,6 +76,7 @@ jobs:
           TELEGRAM_URL=${TELEGRAM_URL}
           LICENSE_LINE=${LICENSE_LINE}
           SPACE_LABEL=${SPACE_LABEL}
+          PASTEBIN_HMAC_SALT=${PASTEBIN_HMAC_SALT}
           PROPS
 
       # ============== DEBUG APK (always built) ==============

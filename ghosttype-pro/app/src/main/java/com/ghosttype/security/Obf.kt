@@ -5,6 +5,8 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Base64
 import java.security.MessageDigest
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
 
 /**
  * Runtime decryption for the obfuscated constants generated at build
@@ -52,6 +54,52 @@ internal object Obf {
         val k = MessageDigest.getInstance("SHA-256").digest(seed)
         keyCache[cacheK] = k
         return k
+    }
+
+    /**
+     * Verifies that the pastebin IDs embedded in the app's URLs match
+     * the HMAC computed at build time. If someone edits the source to
+     * use different pastebin IDs, the HMAC won't match → returns false
+     * → caller bricks the app.
+     *
+     * The HMAC key (PASTEBIN_HMAC_SALT) is XOR-encrypted with the
+     * keystore-derived key in ObfConstants. An attacker with a different
+     * keystore decrypts garbage salt → HMAC mismatch → app bricks.
+     * Even WITH the original keystore, changing the URLs changes the
+     * pastebin IDs, which changes the HMAC input → mismatch → bricks.
+     */
+    fun verifyPastebinIds(ctx: Context): Boolean {
+        if (!ObfConstants.IS_OBFUSCATED) return true
+        return try {
+            val key = derivedKey(ctx)
+            val saltB64 = ObfConstants.PASTEBIN_SALT_ENCRYPTED
+            if (saltB64.isEmpty()) return false
+
+            // Decrypt the salt
+            val saltBytes = Base64.decode(saltB64, Base64.NO_WRAP)
+            val saltOut = ByteArray(saltBytes.size)
+            for (i in saltBytes.indices) {
+                saltOut[i] = (saltBytes[i].toInt() xor key[i % key.size].toInt()).toByte()
+            }
+            val salt = String(saltOut, Charsets.UTF_8)
+            if (salt.isBlank()) return false
+
+            // Extract pastebin IDs from the decrypted URLs
+            val approvalId = decode(ctx, ObfConstants.APPROVAL_URL).substringAfterLast("/")
+            val crashId    = decode(ctx, ObfConstants.CRASH_URL).substringAfterLast("/")
+            val updateId   = decode(ctx, ObfConstants.UPDATE_URL).substringAfterLast("/")
+            val idsConcat  = "$approvalId|$crashId|$updateId"
+
+            // Compute HMAC-SHA256(salt, ids)
+            val mac = Mac.getInstance("HmacSHA256")
+            mac.init(SecretKeySpec(salt.toByteArray(Charsets.UTF_8), "HmacSHA256"))
+            val computed = mac.doFinal(idsConcat.toByteArray(Charsets.UTF_8))
+                .joinToString("") { "%02x".format(it.toInt() and 0xFF) }
+
+            computed.equals(ObfConstants.PASTEBIN_IDS_HMAC, ignoreCase = true)
+        } catch (_: Throwable) {
+            false
+        }
     }
 
     /** SHA-256 of the APK's first signing cert, lowercase hex, no

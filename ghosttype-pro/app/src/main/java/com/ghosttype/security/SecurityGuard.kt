@@ -57,6 +57,10 @@ object SecurityGuard {
         // 6. Kotlin-side debugger check as backup.
         if (Debug.isDebuggerConnected()) return false
 
+        // 7. Pastebin ID pinning — if URLs were changed in source,
+        //    the HMAC won't match → app bricks.
+        if (!Obf.verifyPastebinIds(ctx)) return false
+
         return true
     }
 }
