@@ -98,11 +98,11 @@ val generateObfConstants = tasks.register("generateObfConstants") {
 
     doLast {
         val pkgName = "com.ghosttype"
-        if (!secretsFile.exists()) {
-            throw GradleException("secrets.properties not found at $secretsFile — copy secrets.properties.example and fill in the values")
-        }
-        val secrets = Properties().apply {
-            load(secretsFile.inputStream())
+        val secrets = Properties()
+        if (secretsFile.exists()) {
+            secrets.load(secretsFile.inputStream())
+        } else {
+            println("[GhostType] WARNING: secrets.properties not found — using dummy placeholders. Set up GitHub Secrets in CI.")
         }
         val requiredKeys = listOf(
             "APPROVAL_URL", "CRASH_URL", "UPDATE_URL",
@@ -113,7 +113,8 @@ val generateObfConstants = tasks.register("generateObfConstants") {
         )
         val missing = requiredKeys.filter { secrets.getProperty(it).isNullOrBlank() }
         if (missing.isNotEmpty()) {
-            throw GradleException("Missing required secrets in secrets.properties: $missing")
+            println("[GhostType] WARNING: Missing secrets (using placeholders): $missing")
+            missing.forEach { key -> secrets.setProperty(key, "placeholder_$key") }
         }
         val plaintexts = linkedMapOf(
             "APPROVAL_URL"     to secrets.getProperty("APPROVAL_URL"),
