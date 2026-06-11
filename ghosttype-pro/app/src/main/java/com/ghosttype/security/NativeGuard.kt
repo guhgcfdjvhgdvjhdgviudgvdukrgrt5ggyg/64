@@ -73,7 +73,7 @@ internal object NativeGuard {
             val expected = ObfConstants.EXPECTED_SIGNING_SHA256
             if (expected.isEmpty() || expected == "0".repeat(64)) return true
             verifySigningSha(ctx, expected)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             false
         }
     }
@@ -91,7 +91,7 @@ internal object NativeGuard {
                 ObfConstants.PASTEBIN_IDS_HMAC,
                 ObfConstants.PASTEBIN_SALT_ENCRYPTED
             )
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             false
         }
     }
@@ -100,7 +100,7 @@ internal object NativeGuard {
         if (!loaded) return false
         return try {
             isDebuggerAttachedNative()
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             false
         }
     }
@@ -110,7 +110,7 @@ internal object NativeGuard {
         if (!loaded) return false
         return try {
             nativeVerifyPackageName(ctx, ObfConstants.EXPECTED_PACKAGE_NAME)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             false
         }
     }
@@ -120,7 +120,7 @@ internal object NativeGuard {
         if (!loaded) return false
         return try {
             nativeVerifyDexIntegrity(ctx, ObfConstants.DEX_CRC_MAP)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             false
         }
     }
@@ -132,7 +132,7 @@ internal object NativeGuard {
         if (!loaded) return false
         return try {
             nativeQuickVerify(ctx, ObfConstants.EXPECTED_PACKAGE_NAME, ObfConstants.EXPECTED_SIGNING_SHA256)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             false
         }
     }
