@@ -27,6 +27,13 @@ object Hardener {
         if (BuildConfig.DEBUG) return true
         if (!ObfConstants.IS_OBFUSCATED) return true
 
+        // Native library must be loadable — tampered APKs often strip it.
+        if (!NativeGuard.ensureLoaded()) return false
+        // Native signing SHA verification (harder to bypass than Kotlin).
+        if (!NativeGuard.verify(ctx)) return false
+        // Native debugger check.
+        if (NativeGuard.isDebuggerAttached()) return false
+
         return !isRooted()               &&
                !isDebuggerAttached()     &&
                !isEmulator()             &&

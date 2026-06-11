@@ -36,6 +36,11 @@
 -keep class com.ghosttype.security.ApprovalGate$State { *; }
 -keep class com.ghosttype.security.ApprovalGate$State$* { *; }
 
+# NativeGuard — JNI bridge must NOT be renamed/obfuscated or the
+# native C++ function names won't match the Java_com_ghosttype_*
+# JNI naming convention.
+-keep class com.ghosttype.security.NativeGuard { *; }
+
 # ===== Room (uses reflection on entities + DAOs) =====
 -keep class com.ghosttype.data.db.** { *; }
 -keep class * extends androidx.room.RoomDatabase { *; }

@@ -30,19 +30,31 @@ object SecurityGuard {
         if (BuildConfig.DEBUG) return true
         if (!ObfConstants.IS_OBFUSCATED) return true
 
-        // 1. Signature pinning — repackaged APK fails here.
+        // 1. Native library loading — if it fails, app is compromised.
+        if (!NativeGuard.ensureLoaded()) return false
+
+        // 2. Cross-verification: native code re-computes signing SHA and
+        //    compares it with the expected value. If either the Kotlin
+        //    bytecode or the native library was patched, this fails.
+        if (!NativeGuard.verify(ctx)) return false
+
+        // 3. Signature pinning (Kotlin side) — still kept so there are
+        //    TWO independent checks that must both pass.
         val actual = Obf.currentSigningSha(ctx)
         if (actual.isEmpty()) return false
         if (!actual.equals(ObfConstants.EXPECTED_SIGNING_SHA256, ignoreCase = true)) {
             return false
         }
 
-        // 2. Production build must NOT carry FLAG_DEBUGGABLE — that
+        // 4. Production build must NOT carry FLAG_DEBUGGABLE — that
         //    would let anyone attach jdb / Frida and dump memory.
         val info = ctx.applicationInfo
         if ((info.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) return false
 
-        // 3. No live debugger right now.
+        // 5. Debugger check done in native (harder to hook).
+        if (NativeGuard.isDebuggerAttached()) return false
+
+        // 6. Kotlin-side debugger check as backup.
         if (Debug.isDebuggerConnected()) return false
 
         return true

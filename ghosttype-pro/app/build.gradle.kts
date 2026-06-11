@@ -181,6 +181,7 @@ val generateObfConstants = tasks.register("generateObfConstants") {
 android {
     namespace = "com.ghosttype"
     compileSdk = 34
+    ndkVersion = "27.0.12077973"
 
     defaultConfig {
         applicationId = "com.ghosttype"
@@ -253,6 +254,25 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
+
+    // NDK / native C++ security checks — compiled by CMake.
+    // The library lives at app/src/main/cpp/ and provides JNI-based
+    // signing-SHA verification that is much harder to reverse-engineer
+    // than the equivalent Kotlin bytecode.
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
+    }
+    // Build native lib for the three most common ABIs.
+    // x86/x86_64 are omitted because the emulators that use them are
+    // already blocked by Hardener.isEmulator().
+    defaultConfig {
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
+    }
 
     buildFeatures {
         compose = true
